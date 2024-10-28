@@ -47,6 +47,11 @@ chrome1() {
   # /usr/bin/google-chrome --help
 }
 
+chrome2() {
+  (nohup /usr/bin/google-chrome --user-data-dir=${HOME}/personal/chrome2 2>&1) >/dev/null &
+  # /usr/bin/google-chrome --help
+}
+
 chrometmp() {
   rm -rf /tmp/tmpChrome1
   mkdir -p /tmp/tmpChrome1
