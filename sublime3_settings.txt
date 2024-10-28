@@ -1,0 +1,43 @@
+-----------------------------------------------
+------------- Settings ------------------------
+-----------------------------------------------
+
+{
+  "color_scheme": "Packages/Color Scheme - Default/Celeste.sublime-color-scheme",
+  "font_size": 24,
+  "hot_exit": false,
+  "ignored_packages":
+  [
+    "Vintage"
+  ],
+  "index_files": true,
+  "remember_open_files": false,
+  "rulers":
+  [
+    80,
+    100
+  ],
+  "tab_size": 2,
+  "theme": "Default.sublime-theme",
+  "translate_tabs_to_spaces": true,
+  "update_check": false
+}
+
+
+-----------------------------------------------
+Settings - Distraction free
+-----------------------------------------------
+
+{
+  "line_numbers": true,
+  "gutter": false,
+  "draw_centered": true,
+  "wrap_width": 80,
+  "word_wrap": false,
+  "scroll_past_end": false
+}
+
+
+-----------------------------------------------
+-----------------------------------------------
+
