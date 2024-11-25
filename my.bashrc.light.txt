@@ -1,0 +1,95 @@
+#!/bin/bash
+
+if [ "$ORIGINAL_PATH" == "" ]; then
+  export ORIGINAL_PATH=$PATH
+fi
+export PATH=$ORIGINAL_PATH:.
+
+if [ "$ORIGINAL_PS1" == "" ]; then
+  export ORIGINAL_PS1=$PS1
+fi
+
+export PS1="\n[container][\w]> "
+export EDITOR='pico -w'
+
+alias rbash="source /mnt/code/bashrc.sh"
+alias cls="clear"
+alias clsf="clear"
+alias hs="history"
+alias dir="ls -l"
+alias adir="ls -al"
+alias del="rm"
+alias move="mv"
+alias md="mkdir -p"
+alias rd="rmdir"
+alias rdf="rm -r -f"
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+alias rem='#'
+alias where='/usr/bin/which'
+
+tempfile() {
+  mktemp /tmp/x.tmp.${USER}.XXXXXXXX
+}
+
+lookfor2() {
+    echo
+    echo find . -type f -name \*.$2 -exec grep -i -H -n "$1" {} \\\;
+    find . -type f -name \*.$2 -exec grep -i -H -n "$1" {} \;
+    echo
+}
+
+lookfor() {
+    echo
+    echo find . -type f -exec grep -i -H -n "$1" {} \\\;
+    find . -type f -exec grep -i -H -n "$1" {} \;
+    echo
+}
+
+lookform() {
+    echo
+    echo find . -type f -exec grep -i -l "$1" {} \\\;
+    find . -type f -exec grep -i -l "$1" {} \;
+    echo
+}
+
+mysort() { # in place sort
+    if [ "$1" = "" ]; then
+        echo Please call \"mysort file\"
+        return
+    fi
+    if [ -w "$1" ] && [ -r "$1" ]; then
+        TMPFILE=$(mktemp)
+        sort $1 > $TMPFILE
+        rm $1
+        cp $TMPFILE $1
+        rm $TMPFILE
+    else
+        echo Please call \"mysort file\" - use a real file
+    fi
+}
+
+show_common_lines() {
+  #-1              suppress lines unique to FILE1
+  #-2              suppress lines unique to FILE2
+  #-3              suppress lines that appear in both files
+
+  comm -1 -2 $1 $2
+}
+
+show_leftonly_lines() {
+  #-1              suppress lines unique to FILE1
+  #-2              suppress lines unique to FILE2
+  #-3              suppress lines that appear in both files
+
+  comm -2 -3 $1 $2
+}
+
+show_rightonly_lines() {
+  #-1              suppress lines unique to FILE1
+  #-2              suppress lines unique to FILE2
+  #-3              suppress lines that appear in both files
+
+  comm -1 -3 $1 $2
+}
