@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>MathJax TeX Experiments</title>
+
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+
+</head>
+<body>
+
+When \(a \ne 0\), there are two solutions to \(ax^2 + bx + c = 0\) and they are:
+$$x = {-b \pm \sqrt{b^2-4ac} \over 2a}$$
+
+When \(a = 0\) and \(b \ne 0\), the equation has one solution:
+$$x = {-c \over b}$$
+
+This suggests we should be able to prove: for \(a, b, c \in \mathbb{R}\), and \(b \ne 0\),
+if the limits in the LHS exist, then
+
+$$\lim_{a \to 0} {-b \pm \sqrt{b^2-4ac} \over 2a} = {-c \over b}$$
+
+Some observations:
+<ol>
+<li>LHS has 2 different expressions, we probably need to show the equality for at least
+one of those, not both.</li>
+<li>If \(c = 0\), we see that one of the 2 expressions on the LHS collapses to
+$$\lim_{a \to 0} {-b + \sqrt{b^2} \over 2a} = 0 = {-c \over b}$$
+</li>
+</ol>
+
+So essentially, we need to prove the following statement:
+
+\(\forall a, b, c \in \mathbb{R}, b \ne 0\ , c \ne 0\)
+
+either
+$$
+\lim_{a \to 0} {-b + \sqrt{b^2-4ac} \over 2a} = {-c \over b} ..... (1.1)
+$$
+or
+$$
+\lim_{a \to 0} {-b - \sqrt{b^2-4ac} \over 2a} = {-c \over b} ..... (1.2)
+$$
+
+Lets work with LHS of eq (1.1) and see how far that goes. Firstly we drop the limit and
+assume \(a \ne 0\) so that we can apply the limit later.
+
+$$LHS$$
+$$= {-b + \sqrt{b^2-4ac} \over 2a}$$
+$$= {b \times \left(-1 + \sqrt{1- {4ac \over b^2} } \right) \over 2a}$$
+
+$$= {b \over 2a} \times {\left(-1 + \sqrt{1- {4ac \over b^2} } \right)}$$
+
+$$= {b \over 2a} \times {  ((1- {4ac/ b^2})^{0.5} - 1)}$$
+
+Using Taylor series expansion, and noting that the higher powers will contain \(a^2\) which will
+reduce to a product of \(a\) after multiplying by \(b \over 2a\) will cancel out as \(\lim_{a \to 0}\).
+
+$$= {b \over 2a} \times {  \left( - {4ac/ b^2} \right) \times {0.5} }$$
+
+$$= {b \over 2a} \times {  \left( - {4ac/ b^2} \right) \times {0.5} }$$
+
+$$= {b \over a} \times {  \left( - {ac/ b^2} \right)  }$$
+
+$$= {b \over a} \times {  \left( - {ac \over b^2} \right)  }$$
+
+$$= {- abc \over ab^2} $$
+
+$$= {-c \over b} $$
+
+Note that, for eq (1.2), 
+
+$$LHS$$
+$$= {-b - \sqrt{b^2-4ac} \over 2a}$$
+$$= {-b \over 2a} \times {  ((1 - {4ac/ b^2})^{0.5} + 1)}$$
+
+which has a \(1 / a\) term that never disappears. Hence, the limit does not exist.
+
+</body>
+</html>
+
