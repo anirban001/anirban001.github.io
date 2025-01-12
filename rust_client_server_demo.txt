@@ -1,0 +1,477 @@
+################################################################################
+There are 4 files in this paste:
+
+1) python tcp server
+2) python tcp client
+3) rust tcp client
+4) rust tcp server
+
+I used this small exercise to familiarize myself a bit with Rust multi-threading.
+
+Steps:
+1) Assuming familiarity with Python, start the tcp server in one terminal, then
+   start the tcp client in another terminal, see some requests sent by the
+   client to the server, some responses are received. Some stats are printed,
+   Make sure the python code makes sense.
+
+2) Note that the client and server talk to each other on hard-coded port 12345,
+   there are no command line parameters in any of these programs.
+
+3) Compile and run the rust client (almost equivalent to the python client) and
+   make sure you can run it against the python server. The rust code only uses
+   standard dependencies, so its enough to do the following:
+   "rustc foo.rs -o /tmp/foo && /tmp/foo".
+
+4) Compile and run the rust server. Try both the python client and rust client
+   with the rust server.
+
+5) Familiarize yourself with the Rust client and server. Try to see if you can
+   use llm's or online documentation to write them from scratch. Test against
+   the control python implmentation.
+
+6) Try to change the server rust code to support stopping/cancellation when an
+   api is called on the server object.
+
+################################################################################
+# python tcp server
+################################################################################
+
+#!/usr/bin/env python3
+# https://docs.python.org/3/library/socketserver.html
+# https://docs.python.org/3.6/library/socket.html#other-functions
+
+import socketserver
+
+
+class MyTCPHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        # print(self.request)
+        # client_host, client_port = self.client_address
+        peer_name = "%s:%d" % self.request.getpeername()
+        n = 0
+        bytes = 0
+        try:
+            while True:
+                data = self.request.recv(1024)
+                if len(data) == 0:
+                    break
+                n += 1
+                self.request.sendall(data)
+                bytes += len(data)
+        except ConnectionResetError:
+            print("Connection reset")
+        print("Responded to %d packet(s), %d bytes from %s" % (n, bytes, peer_name))
+
+
+class MyServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
+def _main():
+    try:
+        HOST, PORT = "localhost", 12345
+        with MyServer((HOST, PORT), MyTCPHandler) as server:
+            print("Started server at %s:%d" % (HOST, PORT))
+            server.serve_forever()
+    except KeyboardInterrupt:
+        print("Exiting server")
+
+
+if __name__ == "__main__":
+    _main()
+
+
+################################################################################
+# python tcp client
+################################################################################
+
+#!/usr/bin/env python3
+# https://docs.python.org/3/library/socketserver.html
+
+import random
+import socket
+import threading
+import time
+
+HOST, PORT = "localhost", 12345
+
+
+class Stats(object):
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.updates = 0
+        self.sent_packets = 0
+        self.total_bytes = 0
+        self.received_packets = 0
+        self.broken_pipe_errors = 0
+
+    def update(self, sent_packets, total_bytes, received_packets):
+        self.lock.acquire()
+        self.updates += 1
+        self.sent_packets += sent_packets
+        self.total_bytes += total_bytes
+        self.received_packets += received_packets
+        self.lock.release()
+
+    def increment_broken_pipe_error(self):
+        self.lock.acquire()
+        self.broken_pipe_errors += 1
+        self.lock.release()
+
+    def publish(self):
+        self.lock.acquire()
+        updates, sent_packets, total_bytes, received_packets, broken_pipe_errors = (
+            self.updates,
+            self.sent_packets,
+            self.total_bytes,
+            self.received_packets,
+            self.broken_pipe_errors,
+        )
+        self.lock.release()
+        print(
+            "Client: %d updates, %d packets sent, %d bytes sent and received, %d packets received, %d broken pipe errors"
+            % (
+                updates,
+                sent_packets,
+                total_bytes,
+                received_packets,
+                broken_pipe_errors,
+            ),
+            end="\r",
+            flush=True,
+        )
+
+
+STATS_GLOBAL = Stats()
+
+
+def _single_run():
+    packets_per_thread = 25
+    try:
+        # Create a socket (SOCK_STREAM means a TCP socket)
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            # Connect to server and send data
+            sock.connect((HOST, PORT))
+            sent = []
+            sent_bytes = 0
+            for i in range(packets_per_thread):
+                b = bytes("msg_%d " % i, "utf-8")
+                sock.sendall(b)
+                sent.extend(b)
+                sent_bytes += len(b)
+
+            # Receive data from the server and shut down
+            received = []
+            received_bytes = 0
+            received_packets = 0
+            while received_bytes < sent_bytes:
+                b = sock.recv(1024)
+                received_bytes += len(b)
+                received.extend(b)
+                received_packets += 1
+
+            sock.close()
+            assert sent_bytes == received_bytes
+            STATS_GLOBAL.update(packets_per_thread, sent_bytes, received_packets)
+
+    except ConnectionResetError as ex:
+        print("Client connection reset: ", ex)
+    except ConnectionRefusedError as ex:
+        print("Client connection refused: ", ex)
+        time.sleep(0.1)
+    except BrokenPipeError as ex:
+        STATS_GLOBAL.increment_broken_pipe_error()
+        time.sleep(0.1)
+    except BaseException as ex:
+        print("Other exception: ", ex)
+        time.sleep(0.1)
+
+
+DO_CONTINUE = threading.Event()
+
+
+def _thread_worker():
+    while DO_CONTINUE.is_set():
+        _single_run()
+        time.sleep(0.001 * random.randint(50, 100))
+
+
+def _main():
+    threads = [threading.Thread(target=_thread_worker) for _ in range(10)]
+
+    DO_CONTINUE.set()
+    for t in threads:
+        t.start()
+
+    time.sleep(2.0)
+    DO_CONTINUE.clear()
+
+    for t in threads:
+        t.join()
+
+    STATS_GLOBAL.publish()
+
+
+if __name__ == "__main__":
+    _main()
+
+
+
+################################################################################
+# rust tcp client
+# save this to /tmp/client.rs
+# $ rustc /tmp/client.rs -o /tmp/client.out && /tmp/client.out
+################################################################################
+use std::io::{Read, Write};
+use std::net::TcpStream;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+
+struct Stats {
+    updates: u64,
+    sent_packets: u64,
+    sent_bytes: u64,
+    total_errors: u64,
+}
+
+impl Stats {
+    fn make_stats() -> Self {
+        Self {
+            updates: 0,
+            sent_packets: 0,
+            sent_bytes: 0,
+            total_errors: 0,
+        }
+    }
+
+    fn debug_dump(&self) {
+        print!(
+            "Stats: updates: {}, sent_packets: {}, sent_bytes: {}, \
+ total_errors: {}\r",
+            self.updates, self.sent_packets, self.sent_bytes, self.total_errors
+        );
+        std::io::stdout().flush().unwrap();
+    }
+
+    fn update(&mut self, updates: u64, sent_packets: u64, sent_bytes: u64, total_errors: u64) {
+        self.updates += updates;
+        self.sent_packets += sent_packets;
+        self.sent_bytes += sent_bytes;
+        self.total_errors += total_errors;
+    }
+}
+
+fn print_global_stats(stats: &Arc<Mutex<Stats>>) {
+    stats.lock().unwrap().debug_dump();
+}
+
+fn send_and_receive(
+    host: &str,
+    port: u16,
+    n_packets: usize,
+    n_bytes: usize,
+) -> Result<(), std::io::Error> {
+    let mut stream = TcpStream::connect((host, port))?;
+
+    let send_buf = vec![0; n_bytes];
+
+    // Send n_bytes bytes
+    for _ in 0..n_packets {
+        stream.write_all(&send_buf)?;
+    }
+
+    let mut rx_buf = vec![0; n_bytes];
+
+    for _ in 0..n_packets {
+        // Receive exactly n_bytes bytes
+        stream.read_exact(&mut rx_buf)?;
+    }
+
+    // Close the socket
+    drop(stream);
+
+    Ok(())
+}
+
+fn run_once(_thread_index: i32, stats: &Arc<Mutex<Stats>>) {
+    let n_packets: u64 = 5;
+    let n_bytes: u64 = 1000;
+    // println!("Hello, World from thread {}, Ctrl-C to stop", thread_index);
+    if let Err(e) = send_and_receive("localhost", 12345, n_packets as usize, n_bytes as usize) {
+        println!("Error: {}", e);
+        stats
+            .lock()
+            .unwrap()
+            .update(1, n_packets, n_packets * n_bytes, 1);
+    } else {
+        stats
+            .lock()
+            .unwrap()
+            .update(1, n_packets, n_packets * n_bytes, 0);
+    }
+    thread::sleep(Duration::from_millis(700));
+}
+
+fn main() {
+    let running = Arc::new(AtomicBool::new(true));
+    let stats = Arc::new(Mutex::new(Stats::make_stats()));
+
+    let mut threads = vec![];
+
+    for i in 0..5 {
+        let r_clone = Arc::clone(&running);
+        let stats_clone = Arc::clone(&stats);
+        let handle = thread::spawn(move || {
+            while r_clone.load(Ordering::SeqCst) {
+                run_once(i, &stats_clone);
+            }
+        });
+        threads.push(handle);
+    }
+
+    let r_clone = Arc::clone(&running);
+    let handle = thread::spawn(move || {
+        thread::sleep(Duration::from_secs(4));
+        r_clone.store(false, Ordering::SeqCst);
+    });
+    threads.push(handle);
+
+    let r_clone = Arc::clone(&running);
+    let stats_clone = Arc::clone(&stats);
+    while r_clone.load(Ordering::SeqCst) {
+        print_global_stats(&stats_clone);
+        thread::sleep(Duration::from_millis(500));
+    }
+
+    for handle in threads {
+        handle.join().unwrap();
+    }
+    println!();
+}
+################################################################################
+# rust tcp server
+# save this to /tmp/server.rs
+# $ rustc /tmp/server.rs -o /tmp/server.out && /tmp/server.out
+################################################################################
+use std::io::prelude::*;
+use std::net::{TcpListener, TcpStream};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    mpsc, Arc, Mutex,
+};
+use std::thread;
+use std::time::Duration;
+
+pub struct MyTcpServer {
+    listener: TcpListener,
+    thread_count: usize,
+}
+
+// Unit of work.
+type Job = Box<dyn FnOnce() + Send + 'static>;
+
+impl MyTcpServer {
+    pub fn new(conn_str: &'static str, thread_count: usize) -> MyTcpServer {
+        assert!(thread_count > 0);
+
+        let listener = TcpListener::bind(conn_str).unwrap();
+
+        MyTcpServer {
+            listener: listener,
+            thread_count: thread_count,
+        }
+    }
+
+    fn serve_while_allowed<F>(&self, handler: F)
+    where
+        F: FnOnce(TcpStream) -> () + Send + Copy + Sync + 'static,
+    {
+        let (sender, receiver) = mpsc::channel::<Job>();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let mut worker_threads = vec![];
+        for _ in 0..self.thread_count {
+            let r_clone = Arc::clone(&receiver);
+            worker_threads.push(thread::spawn(move || loop {
+                let message = r_clone.lock().unwrap().recv();
+
+                match message {
+                    Ok(job) => {
+                        // println!("Worker {id} got a job; executing.");
+
+                        job();
+                    }
+                    Err(_) => {
+                        break;
+                    }
+                }
+            }));
+        }
+
+        for stream in self.listener.incoming() {
+            let stream = stream.unwrap();
+            let job = Box::new(move || {
+                handler(stream);
+            });
+            sender.send(job).unwrap();
+        }
+
+        println!("\nShutting down thread pool");
+        drop(sender);
+        for handle in worker_threads {
+            handle.join().unwrap();
+        }
+    }
+}
+
+static TOTAL_CONNECTIONS: AtomicU64 = AtomicU64::new(0);
+static TOTAL_BYTES: AtomicU64 = AtomicU64::new(0);
+static TOTAL_ERRORS: AtomicU64 = AtomicU64::new(0);
+
+fn print_global_stats() {
+    print!(
+        "Stats: connections: {}, bytes: {}, errors: {}\r",
+        TOTAL_CONNECTIONS.load(Ordering::SeqCst),
+        TOTAL_BYTES.load(Ordering::SeqCst),
+        TOTAL_ERRORS.load(Ordering::SeqCst),
+    );
+    std::io::stdout().flush().unwrap();
+}
+
+fn handle_connection(mut stream: TcpStream) {
+    TOTAL_CONNECTIONS.fetch_add(1, Ordering::SeqCst);
+    let mut buffer = [0; 1024];
+    loop {
+        let read_result = stream.read(&mut buffer);
+        match read_result {
+            Ok(n) => {
+                if n == 0 {
+                    // Other side closed the stream
+                    break;
+                }
+                TOTAL_BYTES.fetch_add(n as u64, Ordering::SeqCst);
+                let _ = stream.write(&buffer[..n]);
+            }
+            Err(_) => {
+                TOTAL_ERRORS.fetch_add(1, Ordering::SeqCst);
+            }
+        }
+    }
+}
+
+fn main() {
+    let server = Arc::new(MyTcpServer::new("localhost:12345", 4));
+
+    thread::spawn(move || {
+        server.serve_while_allowed(handle_connection);
+    });
+
+    println!("Server started...\n\n");
+    loop {
+        print_global_stats();
+        thread::sleep(Duration::from_millis(500));
+    }
+}
+################################################################################
