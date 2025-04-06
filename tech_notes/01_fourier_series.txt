@@ -440,7 +440,7 @@ See: https://en.wikipedia.org/wiki/Sawtooth_wave#/media/File:Sawtooth-td_and_fd.
               [ 0                 ]
 
               [ 2𝜋                     ]
-12.2:  a_n =  [ Integral  x cos(nx) dx ] (1/pi) = 0 (Integration by parts)
+12.2:  a_n =  [ Integral  x cos(nx) dx ] (1/𝜋) = 0 (Integration by parts)
               [ 0                      ]
 
               [ 2𝜋                     ]
