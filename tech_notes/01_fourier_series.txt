@@ -1,0 +1,421 @@
+--------------------------------------------------------------------------------
+Sec 1: Introduction
+--------------------------------------------------------------------------------
+
+- Electrical engineering deals with signals
+
+- "signal" is a time-series function (voltage, current, temperature, etc)
+  think of y-axis as the signal value, x-axis as time.
+
+- We sometimes need to "copy" a signal at one place (e.g. video calls) and
+  send it to another place.
+
+- Assume you can only send a fixed set of numbers to the recipient. The size of
+  the set is proportional to the cost of sending.
+
+- You could "sample" the signal and send the discrete sample values to the
+  destination. (split the x-axis into millions of points that are close enough,
+  and then send the y-values to the other side). Is that the only way? If so,
+  its very expensive.
+
+- Joseph Fourier (French scientist), approx 1822, found a better way while
+  studying some thermo-dynamics phenomenon, we use it a lot to study electrical
+  engineering problems now.
+
+- Fortunately, the functions that we want to "send" are all "nice" functions that
+  arise in real life. They are mostly continuous or "smooth" with maybe a small
+  number of discontinuities.
+
+- Also, we assume its ok if the receiver receives an approximate version of the
+  sent function. Imagine that the receiver is receiving a lot of pixels, and if
+  all the pixels of an image have just small errors in them, the regenerated
+  image in the received side is "good enough".
+
+- One more simplification - this is the major intuition:
+
+    - We typically only need to send a finite duration signal from one place to
+      another. Infinite duration signals do not arise in practice and are
+      infinitely costly to send.
+
+    - this means we are dealing with a function that has the x co-ordinate in an
+      interval [a, b] (i.e. if "t" is time then a <= t <= b)
+
+    - If you "left shift" the signal before sending it you don't lose any info,
+      receiver can always "right shift" back to get the original signal.
+      This means, we can assume domain of the function is [0, b - a]
+
+    - If you "squeeze" the x-axis a bit then you don't lose any info, receiver
+      can always un-squeeze the received function to get back the original
+      signal.
+      This means, we can assume domain of the function is [0, 2 * pi]
+
+    - If you define the function in a way where it has other values for t/x not
+      in the [0, 2 * pi] interval, that is not problematic. The receiver can
+      ignore those values.
+
+    - So we decide to operate on periodic functions that are defined on the
+      entire real line. I.e. domain of the function is [-infinity, +infinity],
+      but we are only interested in the [0, 2 * pi] interval once we manage to
+      send the signal to the other side. This concept is called a "function
+      extension". We are "extending" the domain of the function and assigning
+      arbitrary values to the inputs outside the [0, 2 * pi] interval.
+
+    - Specifically we choose "periodic" extensions of the function. What does
+      that mean? It only means we look at functions f: R -> R where
+      f(x + 2 * pi) = f(x) for all x.
+
+      Pictures:
+
+      1. An illustration of a periodic function with period
+      https://en.wikipedia.org/wiki/Periodic_function#/media/File:Periodic_function_illustration.svg
+
+      2. A graph of the sine function, showing two complete periods
+      https://en.wikipedia.org/wiki/Periodic_function#/media/File:Sine.svg
+
+
+--------------------------------------------------------------------------------
+Sec 2: Mathematical formulation of the problem that we want to solve:
+--------------------------------------------------------------------------------
+
+1. f : R -> R is a periodic function with period 2 * pi
+
+2. f is sufficiently nice and smooth in every interval of length 2 * pi
+
+3. f stays within bounds - does not get too large.
+   Specifically:
+   Integral(0, 2 pi)( f(x) * f(x) dx) = a finite number
+   (this is also sometimes described as "f has finite energy" for some reasons)
+
+
+Question:
+
+Can you describe f (upto an error e.g. epsilon = 0.1 or something like that)
+using a finite set of numbers?
+
+This means you have to breakdown f into a small/finite set of numbers and
+then reconstitute f using only those numbers so that the difference between the
+original function and the regenerated function is less than epsilon for all
+input values x.
+
+Picture: 
+You want to send a saw-tooth wave to the other side, what you actually send
+is a good-enough approximation - see the picture at the bottom.
+
+https://en.wikipedia.org/wiki/Fourier_series#/media/File:Fourier_Series.svg
+
+--------------------------------------------------------------------------------
+Sec 3: General idea behind the solution:
+--------------------------------------------------------------------------------
+
+Rewrite f as a linear combination of known functions:
+
+E.g. f = 3 +  0.2 * f1(x) - 1.5 * f2(x) + 0.07 * f3(x) + ....
+
+Assume f1(x), f2(x) are well-known functions. Then all you need to do is to
+send the sequence (3, 0.2, -1.5, 0.07, ...) to the other side. They can recombine
+this to generate the original function back.
+
+Also assume that the coefficients go down to really small values after a 100
+terms. Then the terms that come afterwards contribute really little values to
+the "energy" in the signal.
+
+So all you need to do is to send the first 100 or so coefficients and then the
+recipient can reconstitute the signal that was sent.
+
+--------------------------------------------------------------------------------
+Sec 4: Connection with Linear Algebra
+--------------------------------------------------------------------------------
+
+If you have seen Linear Algebra before, the collection of all such nice functions
+form a vector space. And the set {1, f1(x), f2(x), ...} form a basis. Clearly,
+this is an infinite-dimensional vector space.
+
+You have seen Taylor series expansions in the past, the choice of basis functions
+in that case was f0(x) = 1, f1(x) = x, f2(x) = x^2, f3(x) = x^3 etc ...
+
+That is a BAD choice of basis for sending signals. We want the higher power
+terms to taper off, not grow madly at faster rates.
+
+We would need to choose a different basis for sending signals.
+
+--------------------------------------------------------------------------------
+Sec 5: A more precise mathematical formulation.
+--------------------------------------------------------------------------------
+
+1. f : R -> R is a periodic function with period 2 * pi
+2. f is nice, see Section 2 above.
+
+Find coefficients a_0, a_1, a_2, .... and b_1, b_2, b_3, ... such that the
+following is true for all values of x.
+
+            n = inf
+f(x) = a0 + Sigma    ( a_n cos (nx) + b_n sin(nx)  )
+            n = 1
+
+Basis: We choose cos(nx) and sin(nx) as our basis functions, they already have
+a period of 2 * pi, so that property is also shared by the linear combination.
+
+--------------------------------------------------------------------------------
+Sec 6: Some known integrals before we can learn the main trick!!!
+--------------------------------------------------------------------------------
+
+In this section we will state some surprising integrals without explaining why
+they are important. In a future section we will see how these integrals help
+us compute the a_n and b_n coefficients in the previous section.
+
+Assume m and n are integers:
+
+**********
+6.1
+**********
+
+    2 * pi
+     _                              -
+    /                              |
+    |                              |  0,  if n != m
+    |    cos (nx)  cos(mx)  dx  =  |
+    |                              |  pi, if n == m
+  _/                                -
+
+  0
+
+**********
+6.2
+**********
+
+    2 * pi
+     _                              -
+    /                              |
+    |                              |  0,  if n != m
+    |    sin (nx)  sin(mx)  dx  =  |
+    |                              |  pi, if n == m
+  _/                                -
+
+  0
+
+
+**********
+6.3
+**********
+
+
+    2 * pi
+     _
+    /
+    |
+    |    sin (nx)  cos(mx)  dx  =  0
+    |
+  _/
+
+  0
+
+--------------------------------------------------------------------------------
+Sec 7: Proof of 6.1, 6.2 and 6.3 (feel free to come back later and read)
+(but this is the main intuition Fourier had, everything else in this document
+ connects the trig/calc results in this section to real world).
+--------------------------------------------------------------------------------
+
+We use these:
+
+Sin(A + B) = Sin(A)Cos(B) + Cos(A)Sin(B)
+Cos(A + B) = Cos(A)Cos(B) - Sin(A)Sin(B)
+...
+
+Remember that the integral of sin(mx) or cos(mx) over any period of length 2.pi
+is zero (think of the shapes).
+
+Some people try to explain this using sin is an odd function and cosine is an
+even function in the [-pi, +pi] interval. Remember the results will be the same
+on any interval of length 2 * pi since the functions are periodic.
+
+*************************
+7.1: proof of 6.1
+*************************
+
+cos(nx + mx) = cos(nx)cos(mx) - sin(nx)sin(mx)
+cos(nx - mx) = cos(nx)cos(mx) + sin(nx)sin(mx)
+
+=> 2 cos (nx) cos(mx) = cos(nx + mx) + cos(nx - mx)
+
+                        { cos(nx + mx) + 1, if n == m
+=> 2 cos (nx) cos(mx) = {
+                        { cos(nx + mx) + cos(nx - mx),   if n != m
+
+If you integrate both sides in the interval [0, 2 * pi], then the cosine terms
+all integrate to zero. And in the n == m case you get a non-zero integral.
+
+
+*************************
+7.2: proof of 6.2
+*************************
+
+cos(nx - mx) = cos(nx)cos(mx) + sin(nx)sin(mx)
+cos(nx + mx) = cos(nx)cos(mx) - sin(nx)sin(mx)
+
+=> 2 sin(nx) sin(mx) = cos(nx - mx) - cos(nx + mx)
+
+                       { 1 - cos(nx + mx), if n == m
+=> 2 sin(nx) sin(mx) = {
+                       { cos(nx - mx) - cos(nx + mx),   if n != m
+
+If you integrate both sides in the interval [0, 2 * pi], then the cosine terms
+all integrate to zero. And in the n == m case you get a non-zero integral.
+
+*************************
+7.3: proof of 6.3
+*************************
+
+sin(nx + mx) = sin(nx)cos(mx) + sin(mx)cos(nx)
+sin(nx - mx) = sin(nx)cos(mx) - sin(mx)cos(nx)
+
+=> 2 sin(nx) cos(mx) = sin(nx + mx) + sin(nx - mx)
+
+                       { sin(nx + mx) + 0, if n == m
+=> 2 sin(nx) cos(mx) = {
+                       { sin(nx + mx) + sin(nx - mx),   if n != m
+
+All terms integrate to zero in the [0, 2 * pi] interval.
+
+--------------------------------------------------------------------------------
+Section 8: How to find the Fourier coefficients.
+--------------------------------------------------------------------------------
+
+Remember problem statement from Sec 5:
+
+1. f : R -> R is a periodic function with period 2 * pi
+2. f is nice, see Section 2 above.
+
+Try to find coefficients such that:
+
+                 n = inf
+8.0: f(x) = a0 + Sigma    ( a_n cos (nx) + b_n sin(nx)  )
+                 n = 1
+
+
+             [ 2 * pi            ]
+8.1:  a_0 =  [ Integral  f(x) dx ] (1/2.pi)
+             [ 0                 ]
+
+
+Proof: Integrate the 8.0 representation of f(x) in the interval [0, 2 * pi].
+Switch the order of the Sigma and the Integral (you can do that only because f
+is a "nice" function, not otherwise). All the integrals of cos(nx) and sin(nx)
+are zero. This leaves you with 8.1
+
+
+             [ 2 * pi                    ]
+8.2:  a_n =  [ Integral  f(x) cos(nx) dx ] (1/pi)
+             [ 0                         ]
+
+
+Proof: Multiply both sides of 8.0 and integrate over the [0, 2. pi] interval.
+All terms cancel out leaving one non-zero term. That gives us a_n.
+
+
+
+             [ 2 * pi                    ]
+8.3:  b_n =  [ Integral  f(x) sin(nx) dx ] (1/pi)
+             [ 0                         ]
+
+
+Proof: Multiply both sides of 8.0 and integrate over the [0, 2. pi] interval.
+All terms cancel out leaving one non-zero term. That gives us a_n.
+
+--------------------------------------------------------------------------------
+Section 9: Bringing it all together.
+--------------------------------------------------------------------------------
+
+Back to text. What does this mean?
+
+- Basically you have been given a signal, you use simple transformations to
+  simplify it to a periodic function with period 2.pi on the sender side.
+
+- You calculate some integrals (8.1, 8.2 and 8.3) using "computational"
+  techniques. Depending upon how much fidelity you need to conserve before sending
+  to the recipient, you stop (maybe after 10 or 20 coefficients).
+
+- This is called "domain transformation". The terminology is that you converted
+  a signal from time-domain (x-axis is time) to frequency-domain (all the a_n and
+  b_n values are coefficients of sinusoidal waves), so you have decomposed a
+  time-domain function into a frequency-domain list of coefficients.
+
+- The intuition is that you have broken the signal into a summation of waves,
+  where the a_n and b_n values are telling us how strong the waves are. The larger
+  those values, the stronger those waves contribute to the original signal. For
+  most "nice" functions the contributions from a_n and b_n taper off as n becomes
+  larger.
+
+- The recipient receives the a_n, b_n values, and transformations done to the
+  original signal. This is typically just a few bytes in all, maybe less than
+  1 KB. The recipient then recombines the inputs to get an approximation of the
+  original signal back. This is called a frequency-domain to time-domain
+  transformation.
+
+- Go revisit the following picture now and see if it makes more sense now:
+
+https://en.wikipedia.org/wiki/Fourier_series#/media/File:Fourier_Series.svg
+
+- All the transformations above need to be done using physical hardware. You
+  need hardware that reads a signal and breaks it into frequency domain. Likewise,
+  on the receiver's side, you need hardware to recombine the coefficients into
+  a physical signal. IT IS TOO SLOW TO DO THIS USING SOFTWARE.
+
+
+- Hardware choice (I got these from Chatgpt, so verify):
+    - time -> frequency
+        Digital signal processors, FFT accelerators, FPGA's, Filter banks,
+        Spectrum analyzers,
+    - frequency -> time
+        Digital signal processors, FPGA's, adders, reconstruction circuits
+
+
+  Basically this document is the math. You need physics to actually do the
+  transformations in reality.
+
+--------------------------------------------------------------------------------
+Section 10: you get a more compact formula if you use complex numbers.
+--------------------------------------------------------------------------------
+
+Sometimes the result in section 8 is written using complex numbers.
+
+- Remember i: sqrt(-1), and euler's equation: e^(ix) = cos(x) + i . sin(x)
+
+- Note, I used a sum from 0 to inf in Sec 8, I am using a sum from -inf to +inf
+  here, it just makes the coefficent formulas easier.
+
+
+              n = inf                              n = inf
+10.0: f(x) =  Sigma  c_n (cos (nx) + i sin(nx)) =  Sigma   c_n * e^(i . nx)
+              n = -inf                             n = -inf
+
+
+then the Fourier coefficients are given by:
+
+
+                   1       2 . pi
+10.1:  c_n =  ----------  Integral  f(x) . e^(-inx) dx
+                 2. pi     0
+
+
+Proof:
+Follows by multiplying both sides of 10.0 by e^(-inx) and integrating over
+the interval (0, 2.pi). Only one term remains. All other terms integrate to
+zero.
+
+--------------------------------------------------------------------------------
+Section 11: Major applications
+--------------------------------------------------------------------------------
+
+- Music: All notes played on keyboards have a loud frequency and quieter
+  subharmonics. Thats why the sound emitted by a 512 Hz tuning fork sounds a lot
+  less interesting than playing the C-note on a keyboard. You have been hearing
+  about Fourier analysis from a very young age without knowing it :)
+
+- Remote television, e.g. Netflix, Youtube, watching a sports telecast at real
+  time. The video is captured at the source location, the signal is then broken
+  into a finite number of values using hardware based time->frequency domain
+  converters. These are also called encoders. Then the encoded signal is further
+  compressed (maybe drop the higher terms, also other ideas), then the lighter
+  weight signal is transmitted to the other side (using circuits we haven't
+  discussed here) and then reconstructed back at the recipient's site.
+--------------------------------------------------------------------------------
