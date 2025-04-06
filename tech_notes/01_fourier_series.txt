@@ -1,4 +1,8 @@
 --------------------------------------------------------------------------------
+
+https://anirban001.github.io/tech_notes/01_fourier_series.txt
+
+--------------------------------------------------------------------------------
 Sec 1: Introduction
 --------------------------------------------------------------------------------
 
@@ -47,22 +51,22 @@ Sec 1: Introduction
     - If you "squeeze" the x-axis a bit then you don't lose any info, receiver
       can always un-squeeze the received function to get back the original
       signal.
-      This means, we can assume domain of the function is [0, 2 * pi]
+      This means, we can assume domain of the function is [0, 2𝜋]
 
     - If you define the function in a way where it has other values for t/x not
-      in the [0, 2 * pi] interval, that is not problematic. The receiver can
+      in the [0, 2𝜋] interval, that is not problematic. The receiver can
       ignore those values.
 
     - So we decide to operate on periodic functions that are defined on the
       entire real line. I.e. domain of the function is [-infinity, +infinity],
-      but we are only interested in the [0, 2 * pi] interval once we manage to
+      but we are only interested in the [0, 2𝜋] interval once we manage to
       send the signal to the other side. This concept is called a "function
       extension". We are "extending" the domain of the function and assigning
-      arbitrary values to the inputs outside the [0, 2 * pi] interval.
+      arbitrary values to the inputs outside the [0, 2𝜋] interval.
 
     - Specifically we choose "periodic" extensions of the function. What does
       that mean? It only means we look at functions f: R -> R where
-      f(x + 2 * pi) = f(x) for all x.
+      f(x + 2𝜋) = f(x) for all x.
 
       Pictures:
 
@@ -77,13 +81,13 @@ Sec 1: Introduction
 Sec 2: Mathematical formulation of the problem that we want to solve:
 --------------------------------------------------------------------------------
 
-1. f : R -> R is a periodic function with period 2 * pi
+1. f : R -> R is a periodic function with period 2𝜋
 
-2. f is sufficiently nice and smooth in every interval of length 2 * pi
+2. f is sufficiently nice and smooth in every interval of length 2𝜋
 
 3. f stays within bounds - does not get too large.
    Specifically:
-   Integral(0, 2 pi)( f(x) * f(x) dx) = a finite number
+   Integral(0, 2𝜋)( f(x) * f(x) dx) = a finite number
    (this is also sometimes described as "f has finite energy" for some reasons)
 
 
@@ -142,7 +146,7 @@ We would need to choose a different basis for sending signals.
 Sec 5: A more precise mathematical formulation.
 --------------------------------------------------------------------------------
 
-1. f : R -> R is a periodic function with period 2 * pi
+1. f : R -> R is a periodic function with period 2𝜋
 2. f is nice, see Section 2 above.
 
 Find coefficients a_0, a_1, a_2, .... and b_1, b_2, b_3, ... such that the
@@ -153,7 +157,7 @@ f(x) = a0 + Sigma    ( a_n cos (nx) + b_n sin(nx)  )
             n = 1
 
 Basis: We choose cos(nx) and sin(nx) as our basis functions, they already have
-a period of 2 * pi, so that property is also shared by the linear combination.
+a period of 2𝜋, so that property is also shared by the linear combination.
 
 --------------------------------------------------------------------------------
 Sec 6: Some known integrals before we can learn the main trick!!!
@@ -169,12 +173,12 @@ Assume m and n are integers:
 6.1
 **********
 
-    2 * pi
+    2𝜋
      _                              -
     /                              |
     |                              |  0,  if n != m
     |    cos (nx)  cos(mx)  dx  =  |
-    |                              |  pi, if n == m
+    |                              |  𝜋, if n == m
   _/                                -
 
   0
@@ -183,12 +187,12 @@ Assume m and n are integers:
 6.2
 **********
 
-    2 * pi
+    2𝜋
      _                              -
     /                              |
     |                              |  0,  if n != m
     |    sin (nx)  sin(mx)  dx  =  |
-    |                              |  pi, if n == m
+    |                              |  𝜋, if n == m
   _/                                -
 
   0
@@ -199,7 +203,7 @@ Assume m and n are integers:
 **********
 
 
-    2 * pi
+    2𝜋
      _
     /
     |
@@ -221,12 +225,12 @@ Sin(A + B) = Sin(A)Cos(B) + Cos(A)Sin(B)
 Cos(A + B) = Cos(A)Cos(B) - Sin(A)Sin(B)
 ...
 
-Remember that the integral of sin(mx) or cos(mx) over any period of length 2.pi
+Remember that the integral of sin(mx) or cos(mx) over any period of length 2𝜋
 is zero (think of the shapes).
 
 Some people try to explain this using sin is an odd function and cosine is an
-even function in the [-pi, +pi] interval. Remember the results will be the same
-on any interval of length 2 * pi since the functions are periodic.
+even function in the [-𝜋, +𝜋] interval. Remember the results will be the same
+on any interval of length 2𝜋 since the functions are periodic.
 
 *************************
 7.1: proof of 6.1
@@ -241,7 +245,7 @@ cos(nx - mx) = cos(nx)cos(mx) + sin(nx)sin(mx)
 => 2 cos (nx) cos(mx) = {
                         { cos(nx + mx) + cos(nx - mx),   if n != m
 
-If you integrate both sides in the interval [0, 2 * pi], then the cosine terms
+If you integrate both sides in the interval [0, 2𝜋], then the cosine terms
 all integrate to zero. And in the n == m case you get a non-zero integral.
 
 
@@ -258,7 +262,7 @@ cos(nx + mx) = cos(nx)cos(mx) - sin(nx)sin(mx)
 => 2 sin(nx) sin(mx) = {
                        { cos(nx - mx) - cos(nx + mx),   if n != m
 
-If you integrate both sides in the interval [0, 2 * pi], then the cosine terms
+If you integrate both sides in the interval [0, 2𝜋], then the cosine terms
 all integrate to zero. And in the n == m case you get a non-zero integral.
 
 *************************
@@ -274,7 +278,7 @@ sin(nx - mx) = sin(nx)cos(mx) - sin(mx)cos(nx)
 => 2 sin(nx) cos(mx) = {
                        { sin(nx + mx) + sin(nx - mx),   if n != m
 
-All terms integrate to zero in the [0, 2 * pi] interval.
+All terms integrate to zero in the [0, 2𝜋] interval.
 
 --------------------------------------------------------------------------------
 Section 8: How to find the Fourier coefficients.
@@ -282,7 +286,7 @@ Section 8: How to find the Fourier coefficients.
 
 Remember problem statement from Sec 5:
 
-1. f : R -> R is a periodic function with period 2 * pi
+1. f : R -> R is a periodic function with period 2𝜋
 2. f is nice, see Section 2 above.
 
 Try to find coefficients such that:
@@ -292,33 +296,33 @@ Try to find coefficients such that:
                  n = 1
 
 
-             [ 2 * pi            ]
-8.1:  a_0 =  [ Integral  f(x) dx ] (1/2.pi)
+             [ 2𝜋                ]
+8.1:  a_0 =  [ Integral  f(x) dx ] (1/2𝜋)
              [ 0                 ]
 
 
-Proof: Integrate the 8.0 representation of f(x) in the interval [0, 2 * pi].
+Proof: Integrate the 8.0 representation of f(x) in the interval [0, 2𝜋].
 Switch the order of the Sigma and the Integral (you can do that only because f
 is a "nice" function, not otherwise). All the integrals of cos(nx) and sin(nx)
 are zero. This leaves you with 8.1
 
 
-             [ 2 * pi                    ]
-8.2:  a_n =  [ Integral  f(x) cos(nx) dx ] (1/pi)
+             [ 2𝜋                        ]
+8.2:  a_n =  [ Integral  f(x) cos(nx) dx ] (1/𝜋)
              [ 0                         ]
 
 
-Proof: Multiply both sides of 8.0 and integrate over the [0, 2. pi] interval.
+Proof: Multiply both sides of 8.0 and integrate over the [0, 2𝜋] interval.
 All terms cancel out leaving one non-zero term. That gives us a_n.
 
 
 
-             [ 2 * pi                    ]
-8.3:  b_n =  [ Integral  f(x) sin(nx) dx ] (1/pi)
+             [ 2𝜋                        ]
+8.3:  b_n =  [ Integral  f(x) sin(nx) dx ] (1/𝜋)
              [ 0                         ]
 
 
-Proof: Multiply both sides of 8.0 and integrate over the [0, 2. pi] interval.
+Proof: Multiply both sides of 8.0 and integrate over the [0, 2𝜋] interval.
 All terms cancel out leaving one non-zero term. That gives us a_n.
 
 --------------------------------------------------------------------------------
@@ -328,7 +332,7 @@ Section 9: Bringing it all together.
 Back to text. What does this mean?
 
 - Basically you have been given a signal, you use simple transformations to
-  simplify it to a periodic function with period 2.pi on the sender side.
+  simplify it to a periodic function with period 2𝜋 on the sender side.
 
 - You calculate some integrals (8.1, 8.2 and 8.3) using "computational"
   techniques. Depending upon how much fidelity you need to conserve before sending
@@ -392,14 +396,14 @@ Sometimes the result in section 8 is written using complex numbers.
 then the Fourier coefficients are given by:
 
 
-                   1       2 . pi
+                   1       2𝜋
 10.1:  c_n =  ----------  Integral  f(x) . e^(-inx) dx
-                 2. pi     0
+                 2𝜋        0
 
 
 Proof:
 Follows by multiplying both sides of 10.0 by e^(-inx) and integrating over
-the interval (0, 2.pi). Only one term remains. All other terms integrate to
+the interval (0, 2𝜋). Only one term remains. All other terms integrate to
 zero.
 
 --------------------------------------------------------------------------------
@@ -418,4 +422,54 @@ Section 11: Major applications
   compressed (maybe drop the higher terms, also other ideas), then the lighter
   weight signal is transmitted to the other side (using circuits we haven't
   discussed here) and then reconstructed back at the recipient's site.
+
+--------------------------------------------------------------------------------
+Section 12: Worked out example
+--------------------------------------------------------------------------------
+
+12.0: Given f(x) = x on [0, 2𝜋]
+
+Then extend it periodically so that f(x+2𝜋) = f(x) for all x
+this is called a sawtooth wave form
+
+See: https://en.wikipedia.org/wiki/Sawtooth_wave#/media/File:Sawtooth-td_and_fd.png
+
+
+              [ 2𝜋                ]
+12.1:  a_0 =  [ Integral  x dx    ] (1/2𝜋)  = 𝜋
+              [ 0                 ]
+
+              [ 2𝜋                     ]
+12.2:  a_n =  [ Integral  x cos(nx) dx ] (1/pi) = 0 (Integration by parts)
+              [ 0                      ]
+
+              [ 2𝜋                     ]
+12.3:  b_n =  [ Integral  x sin(nx) dx ] (1/𝜋) = -2/n
+              [ 0                      ]
+
+Final answer:
+
+             n = infinity   1
+f(x) = 𝜋 - 2 Sigma         --- sin(nx)
+             n = 1          n
+
+Approximately, if you take the first 5 terms:
+
+12.4: f(x) = 𝜋 - 2(sin(x) + sin(2x)/2 + sin(3x)/3 + sin(4x)/4 + sin(5x)/5)
+
+Homework:
+
+Plot 12.0 (f(x) = x) and 12.4 on Desmos and see if they match in the (0, 2𝜋)
+interval.
+
+************* expression 1 *********
+\pi-2\left(\frac{\sin(x)}{1}+\frac{\sin(2x)}{2}+\frac{\sin(3x)}{3}+\frac{\sin(4x)}{4}+\frac{\sin(5x)}{5}\ +\ \frac{\sin\left(6x\right)}{6}\ +\ \frac{\sin\left(7x\right)}{7}\right)\ \left\{0\ <\ x\ <\ 2\ \pi\right\}
+************************************
+
+
+************* expression 2 *********
+
+x\ \left\{0\ <\ x\ <\ 2\ \pi\right\}
+
+************************************
 --------------------------------------------------------------------------------
