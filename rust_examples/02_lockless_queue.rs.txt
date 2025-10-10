@@ -1,0 +1,129 @@
+mod my_spsc {
+    use core::cell::UnsafeCell;
+    use core::sync::atomic::{AtomicUsize, Ordering};
+
+    #[derive(Clone, Copy, Debug, Default)]
+    pub struct Message {
+        pub val: usize,
+    }
+
+    impl Message {
+        pub fn new(val: usize) -> Self {
+            Message { val }
+        }
+    }
+
+    // one producer, one consumer.
+    pub struct LocklessSpscQueue<const N: usize> {
+        buf: UnsafeCell<[Message; N]>,
+        head: AtomicUsize, // consumer reads from head
+        tail: AtomicUsize, // producer writes to tail
+    }
+
+    // SAFETY: Internal memory barrier guarantee thread safety as long
+    // as there is a single producer and a single consumer. This is not
+    // thread-safe for multiple producers.
+    unsafe impl<const N: usize> Sync for LocklessSpscQueue<N> {}
+
+    impl<const N: usize> LocklessSpscQueue<N> {
+        pub fn new() -> Self {
+            Self {
+                buf: UnsafeCell::new([Message::default(); N]),
+                head: AtomicUsize::new(0),
+                tail: AtomicUsize::new(0),
+            }
+        }
+
+        // producer writes to tail
+        // consumer reads from head
+
+        /// Returns Err(value) if full.
+        pub fn try_push(&self, value: Message) -> Result<(), Message> {
+            // Can be Ordering::Relaxed if producer is guaranteed to be on same thread.
+            let tail = self.tail.load(Ordering::Acquire);
+
+            let head = self.head.load(Ordering::Acquire);
+
+            if tail.wrapping_sub(head) == N {
+                return Err(value); // full
+            }
+
+            let idx = tail % N;
+            // SAFETY: Interior mutability; SPSC ensures exclusive slot ownership:
+            // producer only touches `tail` slot, consumer only touches `head` slot.
+            unsafe {
+                (*self.buf.get())[idx] = value;
+            }
+
+            self.tail.store(tail.wrapping_add(1), Ordering::Release);
+            Ok(())
+        }
+
+        /// Returns None if empty.
+        pub fn try_pop(&self) -> Option<Message> {
+            // Can be Ordering::Relaxed if consumer is guaranteed to be on same thread.
+            let head = self.head.load(Ordering::Acquire);
+
+            let tail = self.tail.load(Ordering::Acquire);
+            if head == tail {
+                return None; // empty
+            }
+
+            let idx = head % N;
+
+            // SAFETY: SPSC; consumer owns this slot now, read by value (T: Copy).
+            let v = unsafe { (*self.buf.get())[idx] };
+
+            // Release so producer's Acquire load(head) observes this advancement.
+            self.head.store(head.wrapping_add(1), Ordering::Release);
+            Some(v)
+        }
+    }
+}
+
+/////////// Test ////////////////////////////////////
+use my_spsc::LocklessSpscQueue as Queue;
+use my_spsc::Message;
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    const CAPACITY: usize = 4;
+    const MESSAGE_COUNT: usize = 100;
+    let q: &'static Queue<CAPACITY> = Box::leak(Box::new(Queue::<CAPACITY>::new()));
+
+    // producer: send N messages
+    let tx = thread::spawn({
+        move || {
+            for i in 0..MESSAGE_COUNT {
+                let mut v = Message::new(i);
+                while let Err(x) = q.try_push(v) {
+                    v = x;
+                    thread::sleep(Duration::from_millis(1));
+                }
+            }
+        }
+    });
+
+    // consumer: busy-loop
+    let rx = thread::spawn({
+        move || {
+            let mut i: usize = 0;
+            loop {
+                let Some(m) = q.try_pop() else {
+                    thread::sleep(Duration::from_millis(1));
+                    continue;
+                };
+                assert!(i == m.val);
+                i += 1;
+                if i == MESSAGE_COUNT {
+                    break;
+                }
+            }
+        }
+    });
+
+    tx.join().unwrap();
+    rx.join().unwrap();
+    unsafe { drop(Box::from_raw(q as *const _ as *mut Queue<CAPACITY>)) };
+}
