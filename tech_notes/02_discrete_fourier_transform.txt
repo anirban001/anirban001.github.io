@@ -1,0 +1,179 @@
+--------------------------------------------------------------------------------
+
+https://anirban001.github.io/tech_notes/01_fourier_series.txt
+https://anirban001.github.io/tech_notes/02_discrete_fourier_transform.txt
+
+--------------------------------------------------------------------------------
+Section 1: Code
+--------------------------------------------------------------------------------
+
+import math
+
+'''
+
+https://en.wikipedia.org/wiki/Discrete_Fourier_transform
+
+Use the worked out example to prove that the matrix product of fft and inv_fft
+is N * I where N is the identity matrix.
+'''
+
+N = 5
+T = math.pi * 2.0 / N
+OMEGA = complex(math.cos(T), math.sin(T))
+
+
+def print_mat(title, m):
+    print(title)
+    for row in m:
+        print(" " * 4, row)
+
+
+def fwd(i, j):
+    p = (i * j) % N
+    return -p
+    # return OMEGA ** (-p)
+
+
+def backwd(i, j):
+    p = (i * j) % N
+    return p
+    # return OMEGA ** (p)
+
+
+def mat_mult_actual(a, b):
+    def _mult(x, y):
+        return OMEGA ** ((x + y) % N)
+
+    rv = [[complex(0, 0) for j in range(N)] for i in range(N)]
+    for i in range(N):
+        for j in range(N):
+            for k in range(N):
+                rv[i][j] += _mult(a[i][k], b[k][j])
+            assert abs(rv[i][j].imag) < 0.001
+            n = int(rv[i][j].real)
+            assert abs(n - rv[i][j].real) < 0.001
+            rv[i][j] = n
+    return rv
+
+
+fft = [[fwd(i, j) for j in range(N)] for i in range(N)]
+print_mat("fft", fft)
+
+inv_fft = [[backwd(i, j) for j in range(N)] for i in range(N)]
+print_mat("inv_fft", inv_fft)
+
+prod_actual = mat_mult_actual(fft, inv_fft)
+print_mat("prod_actual", prod_actual)
+
+
+def mat_mult_symbolic(a, b):
+    def _mult(x, y):
+        return ((x + y) % N)
+
+    rv = [[[] for j in range(N)] for i in range(N)]
+    for i in range(N):
+        for j in range(N):
+            for k in range(N):
+                rv[i][j].append(_mult(a[i][k], b[k][j]))
+            rv[i][j].sort()
+            text = " + ".join(['w^%d' % n for n in rv[i][j]])
+            rv[i][j] = text
+    return rv
+
+prod_symbolic = mat_mult_symbolic(fft, inv_fft)
+print_mat("prod_symbolic", prod_symbolic)
+
+
+'''
+fft
+     [0, 0, 0, 0, 0]
+     [0, -1, -2, -3, -4]
+     [0, -2, -4, -1, -3]
+     [0, -3, -1, -4, -2]
+     [0, -4, -3, -2, -1]
+inv_fft
+     [0, 0, 0, 0, 0]
+     [0, 1, 2, 3, 4]
+     [0, 2, 4, 1, 3]
+     [0, 3, 1, 4, 2]
+     [0, 4, 3, 2, 1]
+prod_actual
+     [5, 0, 0, 0, 0]
+     [0, 5, 0, 0, 0]
+     [0, 0, 5, 0, 0]
+     [0, 0, 0, 5, 0]
+     [0, 0, 0, 0, 5]
+prod_symbolic
+     ['w^0 + w^0 + w^0 + w^0 + w^0', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4']
+     ['w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^0 + w^0 + w^0 + w^0', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4']
+     ['w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^0 + w^0 + w^0 + w^0', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4']
+     ['w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^0 + w^0 + w^0 + w^0', 'w^0 + w^1 + w^2 + w^3 + w^4']
+     ['w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^1 + w^2 + w^3 + w^4', 'w^0 + w^0 + w^0 + w^0 + w^0']
+'''
+
+--------------------------------------------------------------------------------
+Section 2: Statement
+--------------------------------------------------------------------------------
+
+Let n be an integer greater than one.
+Let w be the n'th root of unity (e^i(2𝜋/n))
+Let f and b be functions that map (0, ..., N - 1) x (0, ..., N - 1) -> (0, ..., N - 1)
+using the formulas:
+
+f(i, j) : (-(i * j)) % N
+b(i, j) : (i * j) % N
+
+Let convolve(i, j) = sigma(0 <= k < n) w^(f(i, k) + b(k, j))
+prove that:
+
+convolve(i, j) = N,  if i == j
+convolve(i, j) = 0,  if i != j
+
+--------------------------------------------------------------------------------
+Section 3: Proof for i == j
+--------------------------------------------------------------------------------
+
+if i == j:
+
+convolve(i, j)
+    = convolve(i, i)
+    = sigma(0 <= k < n) w^(f(i, k) + b(k, i))
+    = sigma(0 <= k < n) w^(-(i * k) + (i * k))  (note that w^N = 1, so we can ignore % N)
+    = sigma(0 <= k < n) w^(0)
+    = sigma(0 <= k < n) 1
+    = N
+
+--------------------------------------------------------------------------------
+Section 3: Proof for i != j
+--------------------------------------------------------------------------------
+
+
+note that
+    (a) w^(j - i) is a root of unity (raise to the n'th power and verify)
+    (b) w^(j - i) is not a real number (j != i), so it must be complex
+
+so w^(j - i) is a root of the equation z^n - 1 = 0 and not a root of the equation
+z - 1 = 0.
+
+so w^(j - i) must be a root of the equation 1 + z + z^2 + ... z^(n - 1) = 0
+
+
+convolve(i, j)
+    = sigma(0 <= k < n) w^(f(i, k) + b(k, j))
+    = sigma(0 <= k < n) w^(jk - ik)
+    = sigma(0 <= k < n) (w^(j - i))^k
+    = 1 + z + z^2 + ... z^(n - 1)  for z =  w^(j - i)
+    = 0
+
+hence proved.
+
+e.g. the non-diagonal terms for n = 8
+
+    w^0 + w^1 + w^2 + w^3 + w^4 + w^5 + w^6 + w^7
+
+    w^0 + w^0 + w^2 + w^2 + w^4 + w^4 + w^6 + w^6
+
+    w^0 + w^0 + w^0 + w^0 + w^4 + w^4 + w^4 + w^4
+
+
+--------------------------------------------------------------------------------

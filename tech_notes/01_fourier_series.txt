@@ -1,6 +1,7 @@
 --------------------------------------------------------------------------------
 
 https://anirban001.github.io/tech_notes/01_fourier_series.txt
+https://anirban001.github.io/tech_notes/02_discrete_fourier_transform.txt
 
 --------------------------------------------------------------------------------
 Sec 1: Introduction
